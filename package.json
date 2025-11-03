@@ -13,7 +13,8 @@
     "@azure-rest/ai-inference": "^1.0.0-beta.6",
     "@azure/core-auth": "^1.10.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-speech-recognition": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
