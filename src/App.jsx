@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [isConversationActive, setIsConversationActive] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   
   const silenceTimerRef = useRef(null);
   const utteranceRef = useRef(null);
@@ -24,6 +25,29 @@ function App() {
     browserSupportsSpeechRecognition
   } = useSpeechRecognition();
 
+  // ✅ NEW: Check HTTPS and Browser Support with detailed logs
+  useEffect(() => {
+    console.log("🔍 Checking browser support...");
+    console.log("Protocol:", window.location.protocol);
+    console.log("Hostname:", window.location.hostname);
+    console.log("Browser SpeechRecognition:", 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    console.log("Speech Synthesis:", 'speechSynthesis' in window);
+    
+    // Check microphone permissions
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' })
+        .then((result) => {
+          console.log("🎤 Microphone Permission State:", result.state);
+          if (result.state === 'denied') {
+            setVoiceError("Microphone permission denied. Please enable it in browser settings.");
+          }
+        })
+        .catch((err) => {
+          console.warn("⚠️ Could not check microphone permissions:", err);
+        });
+    }
+  }, []);
+
   // Auto-scroll to latest message
   useEffect(() => {
     if (chatBoxRef.current) {
@@ -31,14 +55,14 @@ function App() {
     }
   }, [messages]);
 
-  // ✅ NEW: Check for HTTPS and browser support
+  // Check for HTTPS in production
   if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
     return (
       <div className="chat-container">
         <div className="not-supported">
           <h1>🔒 HTTPS Required</h1>
           <p>Voice features require a secure HTTPS connection.</p>
-          <p>This app works on https:// domains only.</p>
+          <p>Current protocol: {window.location.protocol}</p>
         </div>
       </div>
     );
@@ -50,6 +74,20 @@ function App() {
         <div className="not-supported">
           <h1>⚠️ Browser Not Supported</h1>
           <p>Please use Chrome, Edge, or Safari for voice features.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (voiceError) {
+    return (
+      <div className="chat-container">
+        <div className="not-supported">
+          <h1>⚠️ Microphone Issue</h1>
+          <p>{voiceError}</p>
+          <p style={{ fontSize: '0.9rem', marginTop: '20px' }}>
+            Try: Browser Settings → Privacy → Microphone → Allow this site
+          </p>
         </div>
       </div>
     );
@@ -91,70 +129,84 @@ function App() {
   const speak = (text) => {
     return new Promise((resolve) => {
       if ('speechSynthesis' in window) {
-        SpeechRecognition.stopListening();
-        window.speechSynthesis.cancel();
-        
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-          utterance.volume = 1.0;
-          utterance.lang = 'en-IN';
+        try {
+          SpeechRecognition.stopListening();
+          window.speechSynthesis.cancel();
           
-          utteranceRef.current = utterance;
-          setIsSpeaking(true);
-
-          utterance.onstart = () => {
-            console.log("🔊 Started speaking");
-            resetTranscript();
-            lastTranscriptLengthRef.current = 0;
-          };
-
-          utterance.onend = () => {
-            console.log("✅ Finished speaking");
-            setIsSpeaking(false);
-            utteranceRef.current = null;
+          setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            utterance.lang = 'en-IN';
             
-            if (isConversationActive) {
-              setTimeout(() => {
-                resetTranscript();
-                lastTranscriptRef.current = "";
-                lastTranscriptLengthRef.current = 0;
-                SpeechRecognition.startListening({ 
-                  continuous: true,
-                  language: 'en-IN'
-                });
-              }, 500);
-            }
-            
-            resolve();
-          };
+            utteranceRef.current = utterance;
+            setIsSpeaking(true);
 
-          utterance.onerror = (event) => {
-            console.error('Speech synthesis error:', event);
-            setIsSpeaking(false);
-            utteranceRef.current = null;
-            resolve();
-          };
+            utterance.onstart = () => {
+              console.log("🔊 Started speaking");
+              resetTranscript();
+              lastTranscriptLengthRef.current = 0;
+            };
 
-          window.speechSynthesis.speak(utterance);
-        }, 300);
+            utterance.onend = () => {
+              console.log("✅ Finished speaking");
+              setIsSpeaking(false);
+              utteranceRef.current = null;
+              
+              if (isConversationActive) {
+                setTimeout(() => {
+                  resetTranscript();
+                  lastTranscriptRef.current = "";
+                  lastTranscriptLengthRef.current = 0;
+                  SpeechRecognition.startListening({ 
+                    continuous: true,
+                    language: 'en-IN'
+                  });
+                }, 500);
+              }
+              
+              resolve();
+            };
+
+            utterance.onerror = (event) => {
+              console.error('❌ Speech synthesis error:', event.error);
+              setVoiceError(`Speech error: ${event.error}`);
+              setIsSpeaking(false);
+              utteranceRef.current = null;
+              resolve();
+            };
+
+            window.speechSynthesis.speak(utterance);
+          }, 300);
+        } catch (error) {
+          console.error('❌ Error in speak function:', error);
+          setVoiceError(`Error: ${error.message}`);
+          resolve();
+        }
       } else {
+        console.error('❌ speechSynthesis not available');
         resolve();
       }
     });
   };
 
   const startConversation = () => {
-    setIsConversationActive(true);
-    resetTranscript();
-    lastTranscriptRef.current = "";
-    lastTranscriptLengthRef.current = 0;
-    
-    SpeechRecognition.startListening({ 
-      continuous: true,
-      language: 'en-IN'
-    });
+    try {
+      console.log("🎤 Starting conversation...");
+      setIsConversationActive(true);
+      resetTranscript();
+      lastTranscriptRef.current = "";
+      lastTranscriptLengthRef.current = 0;
+      
+      SpeechRecognition.startListening({ 
+        continuous: true,
+        language: 'en-IN'
+      });
+    } catch (error) {
+      console.error('❌ Error starting listening:', error);
+      setVoiceError(`Listening error: ${error.message}`);
+    }
   };
 
   const stopConversation = () => {
