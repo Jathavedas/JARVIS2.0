@@ -31,6 +31,19 @@ function App() {
     }
   }, [messages]);
 
+  // ✅ NEW: Check for HTTPS and browser support
+  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+    return (
+      <div className="chat-container">
+        <div className="not-supported">
+          <h1>🔒 HTTPS Required</h1>
+          <p>Voice features require a secure HTTPS connection.</p>
+          <p>This app works on https:// domains only.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!browserSupportsSpeechRecognition) {
     return (
       <div className="chat-container">
@@ -239,7 +252,6 @@ function App() {
   return (
     <div className="app-wrapper">
       <div className="chat-container">
-        {/* Header */}
         <div className="header">
           <div className="header-content">
             <div className="logo-section">
@@ -253,7 +265,6 @@ function App() {
           </div>
         </div>
 
-        {/* Status Bar */}
         {isConversationActive && (
           <div className="status-bar">
             {isSpeaking && (
@@ -277,7 +288,6 @@ function App() {
           </div>
         )}
 
-        {/* Chat Box */}
         <div className="chat-box" ref={chatBoxRef}>
           {messages.length === 0 && !isConversationActive && (
             <div className="welcome-section">
@@ -334,7 +344,6 @@ function App() {
           )}
         </div>
 
-        {/* Input Area */}
         <div className="input-section">
           <div className="input-wrapper">
             <input
@@ -354,7 +363,6 @@ function App() {
             </button>
           </div>
           
-          {/* Voice Controls */}
           <div className="controls-row">
             {!isConversationActive ? (
               <button 
@@ -374,13 +382,11 @@ function App() {
             )}
           </div>
 
-          {/* Help Text */}
           {isConversationActive && (
             <p className="help-text">💡 Speak naturally. I respond after 2 seconds of silence.</p>
           )}
         </div>
 
-        {/* Event Info */}
         <div className="event-programs">
           <h3>🎯 Tech Fest Programs</h3>
           <div className="programs-grid">
