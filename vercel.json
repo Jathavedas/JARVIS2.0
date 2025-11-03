@@ -1,0 +1,25 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "env": {
+    "VITE_AZURE_OPENAI_API_KEY": "@azure_openai_api_key",
+    "VITE_AZURE_OPENAI_ENDPOINT": "@azure_openai_endpoint",
+    "VITE_AZURE_OPENAI_DEPLOYMENT_NAME": "@azure_openai_deployment_name"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), speaker=(self), geolocation=(), camera=()"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    }
+  ]
+}
